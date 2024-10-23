@@ -8,6 +8,7 @@ import os
 from tqdm import tqdm
 import lightning.pytorch as pl
 
+from typing import Tuple
 from root import ROOT_DIR
 from utils import dataset_precip, model_classes
 
@@ -77,7 +78,7 @@ def get_persistence_metrics(test_dl, denormalize=True):
     return loss, loss_denorm, precision, recall, accuracy, f1, csi, far
 
 
-def print_persistent_metrics(data_file) -> tuple[torch.Tensor, torch.Tensor]:
+def print_persistent_metrics(data_file) -> Tuple[torch.Tensor, torch.Tensor]:
     dataset = dataset_precip.precipitation_maps_oversampled_h5(
         in_file=data_file, num_input_images=12, num_output_images=6, train=False
     )
@@ -132,7 +133,7 @@ def plot_losses(test_losses, loss: str):
 
 if __name__ == "__main__":
     # Models that are compared should be in this folder (the ones with the lowest validation error)
-    model_folder = ROOT_DIR / "checkpoints" / "comparison"
+    model_folder = ROOT_DIR / "comparison"
     data_file = (
         ROOT_DIR / "data" / "precipitation" / "train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5"
     )

@@ -6,3 +6,11 @@ checkpoints
 .ruff_cache
 .mypy_cache
 __pycache__/*
+test_gaps3.csv
+test_gaps.csv
+test_gaps2.csv
+gaps.csv
+gaps2.csv
+training_nodes.csv
+utils/__pycache__/__init__.cpython-312.pyc
+utils/__pycache__/interpolation_maps.cpython-312.pyc

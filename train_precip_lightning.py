@@ -23,6 +23,10 @@ def train_regression(hparams, find_batch_size_automatically: bool = False):
         net = unet_regr.UNetDS(hparams=hparams)
     elif hparams.model == "SmaAt_UNet":
         net = unet_regr.SmaAt_UNet(hparams=hparams)
+    elif hparams.model == "Hybrid_UNet":
+        net = unet_regr.Hybrid_SmaAt(hparams = hparams)
+    elif hparams.model == "Hybrid_UNet_2":
+        net = unet_regr.Hybrid_SmaAt_2(hparams = hparams)
     else:
         raise NotImplementedError(f"Model '{hparams.model}' not implemented")
 
@@ -90,7 +94,9 @@ if __name__ == "__main__":
     # args.fast_dev_run = True
     args.n_channels = 12
     # args.gpus = 1
-    args.model = "SmaAt_UNet"
+    #args.model = "Hybrid_UNet"
+    args.model = "Hybrid_UNet_2"
+    #args.model = "SmaAt_UNet"
     args.lr_patience = 4
     args.es_patience = 15
     # args.val_check_interval = 0.25
@@ -98,7 +104,7 @@ if __name__ == "__main__":
     args.use_oversampled_dataset = True
     args.dropout=0.5
     args.dataset_folder = (
-        ROOT_DIR / "data" / "precipitation" / "train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5"
     )
     # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"
 
