@@ -10,7 +10,7 @@ from utils.interpolation_maps import makeKrigeMap
 
 precipitation_folder = ROOT_DIR / "data" / "precipitation"
 #create kriging dataset from regular node dataset
-K_SIZE = 64 #size of kriging map
+K_SIZE = 256 #size of kriging map
 
 def create_dataset():
     with h5py.File(
@@ -25,16 +25,16 @@ def create_dataset():
         test_nodes = orig_f["test"]["nodes"]
 
         filename = (
-            precipitation_folder / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5"
+            precipitation_folder / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_256.h5"
         )
         #copy images and timestamps, create kriging dataset
         with h5py.File(filename, "w") as f:
             train_set = f.create_group("train")
             test_set = f.create_group("test")
-            f["train"].create_dataset("images", data=train_images)
-            f["train"].create_dataset("timestamps", data=train_timestamps)
-            f["test"].create_dataset("images", data=test_images)
-            f["test"].create_dataset("timestamps", data=test_timestamps)
+            f["train"].create_dataset("images", data=train_images, dtype="float32", compression="gzip", compression_opts=9)
+            f["train"].create_dataset("timestamps", data=train_timestamps, dtype=h5py.special_dtype(vlen=str), compression="gzip", compression_opts=9)
+            f["test"].create_dataset("images", data=test_images, dtype="float32", compression="gzip", compression_opts=9)
+            f["test"].create_dataset("timestamps", data=test_timestamps, dtype=h5py.special_dtype(vlen=str), compression="gzip", compression_opts=9)
             train_kriging_dataset = train_set.create_dataset(
                 "kriging",
                 shape=(5733, 18, 8,K_SIZE,K_SIZE),
