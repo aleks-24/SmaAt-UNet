@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pykrige.ok import OrdinaryKriging
 
-SIZE = 256
+SIZE = 288
 
 #get first row of data from each weather station
 dataset_path = "data/Set6"
