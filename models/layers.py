@@ -139,3 +139,12 @@ class CBAM(nn.Module):
         out = self.channel_att(x)
         out = self.spatial_att(out)
         return out
+
+class Interpolate(nn.Module):
+    def __init__(self, size):
+        super().__init__()
+        self.size = size
+
+    def forward(self, x):
+        return F.interpolate(x, size=self.size, mode='bilinear')
+        
