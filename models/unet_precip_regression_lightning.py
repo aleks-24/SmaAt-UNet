@@ -1,8 +1,8 @@
 from models.unet_parts import Down, DoubleConv, Up, OutConv
-from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS
+from models.unet_parts_depthwise_separable import DoubleConvDS, UpDS, DownDS, NodeInput3d
 from models.layers import CBAM, Interpolate
 from models.regression_lightning import Precip_regression_base, node_regression_base, Kriging_regression_base
-from torch import nn
+from torch import nn, conv3d
 import torch
 
 class UNet(Precip_regression_base):
@@ -380,7 +380,7 @@ class Node_SmaAt_bridge(node_regression_base): #version with embedded tensor add
         dropout_prob = self.hparams.dropout
 
         self.inc = DoubleConvDS(self.n_channels, 64, kernels_per_layer=kernels_per_layer)
-        self.inc2 = DoubleConvDS(self.n_channels, 512, kernels_per_layer=kernels_per_layer)
+        self.inc2 = NodeInput3d()
         self.cbam1 = CBAM(64, reduction_ratio=reduction_ratio)
         self.down1 = DownDS(64, 128, kernels_per_layer=kernels_per_layer)
         self.cbam2 = CBAM(128, reduction_ratio=reduction_ratio)
@@ -396,12 +396,13 @@ class Node_SmaAt_bridge(node_regression_base): #version with embedded tensor add
         self.up3 = UpDS(256, 128 // factor, self.bilinear, kernels_per_layer=kernels_per_layer)
         self.up4 = UpDS(128, 64, self.bilinear, kernels_per_layer=kernels_per_layer)
         
-        self.ip = Interpolate(size=(288,288), mode='bilinear') #interpolate data to image size
+        self.ip = Interpolate(size=(64,64), mode='bilinear') #interpolate data to image size
         self.outc = OutConv(64, self.n_classes)
 
         self.dropout = nn.Dropout(p=dropout_prob)
 
     def forward(self, x , y):
+        x = self.ip(x)
         x1 = self.inc(x)
         x1Att = self.cbam1(x1)
         x2 = self.down1(x1)
@@ -414,7 +415,10 @@ class Node_SmaAt_bridge(node_regression_base): #version with embedded tensor add
         x5Att = self.cbam5(x5)
 
         #bridge part
+        #print(y.shape)
         y1 = self.inc2(y)
+        #print(y1.shape)
+        #print(x5Att.shape)
         x = torch.cat((x5Att, y1), dim= 3) #attach the 8x18 node data to the 18x18 embedded tensor becoming a 26x18 tensor
         
         x = self.up1(x, x4Att)
@@ -424,7 +428,7 @@ class Node_SmaAt_bridge(node_regression_base): #version with embedded tensor add
         x = self.up3(x, x2Att)
         x = self.up4(x, x1Att)
         logits = self.outc(x)
-        print(logits.shape)
+        #print(logits.shape)
         return logits
  
 class Node_GNet(node_regression_base):
@@ -468,7 +472,6 @@ class Node_GNet(node_regression_base):
         self.up3 = UpDS(256*2, 128*2 // factor, self.bilinear, kernels_per_layer=kernels_per_layer)
         self.up4 = UpDS(128*2, 64*2, self.bilinear, kernels_per_layer=kernels_per_layer)
 
-        self.ip = Interpolate(size=(288,288), mode='bilinear')
         self.outc = OutConv(64*2, self.n_classes)
         
         self.dropout = nn.Dropout(p=dropout_prob)
@@ -487,7 +490,6 @@ class Node_GNet(node_regression_base):
         x5Att = self.cbam15(x5)
         
         # down nodes
-        y = self.ip(y)
         y1 = self.inc2(y)
         print(y1.shape)
         y1Att = self.cbam21(y1)
@@ -541,7 +543,7 @@ class Krige_GNet(Kriging_regression_base):
         self.cbam15 = CBAM(1024 // factor, reduction_ratio=reduction_ratio)
         
         # mask down
-        self.inc2 = DoubleConvDS(self.n_channels, 64, kernels_per_layer=kernels_per_layer)
+        self.inc2 = DoubleConvDS(8*self.n_channels, 64, kernels_per_layer=kernels_per_layer)
         self.cbam21 = CBAM(64, reduction_ratio=reduction_ratio)
         self.down21 = DownDS(64, 128, kernels_per_layer=kernels_per_layer)
         self.cbam22 = CBAM(128, reduction_ratio=reduction_ratio)
@@ -576,8 +578,8 @@ class Krige_GNet(Kriging_regression_base):
         x5Att = self.cbam15(x5)
         
         # down nodes
+        y = torch.flatten(y, start_dim=1, end_dim=2)
         y1 = self.inc2(y)
-        print(y1.shape)
         y1Att = self.cbam21(y1)
         y2 = self.down21(y1)
         y2Att = self.cbam22(y2)

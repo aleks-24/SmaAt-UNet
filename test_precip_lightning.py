@@ -10,7 +10,7 @@ import lightning.pytorch as pl
 
 from typing import Tuple
 from root import ROOT_DIR
-from utils import dataset_precip, model_classes
+from utils import dataset_precip, model_classes, dataset_hybrid
 
 
 def get_model_loss(model, test_dl, loss="mse", denormalize=True):
@@ -48,8 +48,9 @@ def get_persistence_metrics(test_dl, denormalize=True):
     loss: torch.Tensor = 0.0
     loss_denorm: torch.Tensor = 0.0
     precision, recall, accuracy, f1, csi, far = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
-    for x, y_true in tqdm(test_dl, leave=False):
-        y_pred = x[:, -1, :]
+    for input_img, input_2, target_img, target_2 in tqdm(test_dl, leave=False):
+        y_pred = input_img[:, -1, :]
+        y_true = target_img
         loss += loss_func(y_pred.squeeze(), y_true, reduction="sum") / y_true.size(0)
         loss_denorm += loss_func(y_pred.squeeze() * factor, y_true * factor, reduction="sum") / y_true.size(0)
         # denormalize and convert from mm/5min to mm/h
@@ -79,7 +80,7 @@ def get_persistence_metrics(test_dl, denormalize=True):
 
 
 def print_persistent_metrics(data_file) -> Tuple[torch.Tensor, torch.Tensor]:
-    dataset = dataset_precip.precipitation_maps_oversampled_h5(
+    dataset = dataset_precip.precipitation_maps_h5_nodes(
         in_file=data_file, num_input_images=12, num_output_images=6, train=False
     )
 
@@ -100,7 +101,7 @@ def get_model_losses(model_folder, data_file):
     }
 
     models = [m for m in os.listdir(model_folder) if ".ckpt" in m]
-    dataset = dataset_precip.precipitation_maps_oversampled_h5(
+    dataset = dataset_hybrid.precipitation_maps_h5_nodes(
         in_file=data_file, num_input_images=12, num_output_images=6, train=False
     )
 
@@ -135,7 +136,7 @@ if __name__ == "__main__":
     # Models that are compared should be in this folder (the ones with the lowest validation error)
     model_folder = ROOT_DIR / "comparison"
     data_file = (
-        ROOT_DIR / "data" / "precipitation" / "train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64.h5"
     )
 
     # This changes whether to load or to run the model loss calculation

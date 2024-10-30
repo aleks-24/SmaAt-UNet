@@ -25,42 +25,47 @@ def create_dataset():
         test_nodes = orig_f["test"]["nodes"]
 
         filename = (
-            precipitation_folder / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_256.h5"
+            precipitation_folder / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_288.h5"
         )
         #copy images and timestamps, create kriging dataset
         with h5py.File(filename, "w") as f:
             train_set = f.create_group("train")
             test_set = f.create_group("test")
-            f["train"].create_dataset("images", data=train_images, dtype="float32", compression="gzip", compression_opts=9)
-            f["train"].create_dataset("timestamps", data=train_timestamps, dtype=h5py.special_dtype(vlen=str), compression="gzip", compression_opts=9)
-            f["test"].create_dataset("images", data=test_images, dtype="float32", compression="gzip", compression_opts=9)
-            f["test"].create_dataset("timestamps", data=test_timestamps, dtype=h5py.special_dtype(vlen=str), compression="gzip", compression_opts=9)
+            orig_f["train"].copy("images", train_set)
+            orig_f["train"].copy("timestamps", train_set)
+            orig_f["test"].copy("images", test_set)
+            orig_f["test"].copy("timestamps", test_set)
+
+            kriging_train_images = np.empty((5733,18,8,K_SIZE,K_SIZE), dtype="float32")
+            kriging_test_images = np.empty((1557,18,8,K_SIZE,K_SIZE), dtype="float32")
+
+            for i in tqdm(range(kriging_train_images.shape[0])):
+                for j in range(kriging_train_images.shape[2]):
+                    input = train_nodes[i][:, j, :]
+                    kriging_map = makeKrigeMap(input)
+                    kriging_train_images[i,j] = kriging_map
+            for i in tqdm(range(kriging_test_images.shape[0])):
+                for j in range(kriging_test_images.shape[2]):
+                    input = test_nodes[i][:, j, :]
+                    kriging_map = makeKrigeMap(input)
+                    kriging_test_images[i,j] = kriging_map
+            
             train_kriging_dataset = train_set.create_dataset(
                 "kriging",
-                shape=(5733, 18, 8,K_SIZE,K_SIZE),
+                data = kriging_train_images,
                 maxshape=(None, 18, 8,K_SIZE,K_SIZE),
                 dtype="float32",
                 compression="gzip",
-                compression_opts=9,
+                compression_opts=5,
             )
             test_kriging_dataset = test_set.create_dataset(
                 "kriging",
-                shape=(1557, 18, 8,K_SIZE,K_SIZE),
+                data = kriging_test_images,
                 maxshape=(None, 18, 8,K_SIZE,K_SIZE),
                 dtype="float32",
                 compression="gzip",
-                compression_opts=9,
+                compression_opts=5,
             )
-            #(5733, 22, 18, 8) for train_nodes
-            for i in tqdm(range(train_nodes.shape[0])):
-                for j in range(train_nodes.shape[2]):
-                    input = train_nodes[i][:, j, :]
-                    kriging_map = makeKrigeMap(input)
-                    train_kriging_dataset[i,j] = kriging_map
-            for i in tqdm(range(test_nodes.shape[0])):
-                for j in range(test_nodes.shape[2]):
-                    input = test_nodes[i][:, j, :]
-                    kriging_map = makeKrigeMap(input)
-                    test_kriging_dataset[i,j] = kriging_map
+
 
 create_dataset()

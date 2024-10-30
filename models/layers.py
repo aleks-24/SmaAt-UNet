@@ -49,6 +49,24 @@ class DepthwiseSeparableConv(nn.Module):
         x = self.pointwise(x)
         return x
 
+class DepthwiseSeparableConv3D(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, padding = 0, kernels_per_layer = 1, stride = 1):
+        super().__init__()
+        self.depthwise = nn.Conv3d(
+            in_channels,
+            in_channels * kernels_per_layer,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=in_channels,
+            stride=stride
+        )
+        self.pointwise = nn.Conv3d(in_channels * kernels_per_layer, out_channels, kernel_size=1)
+
+    def forward(self, x):
+        out = self.depthwise(x)
+        out = self.pointwise(out)
+        return out
+
 
 class DoubleDense(nn.Module):
     def __init__(self, in_channels, hidden_neurons, output_channels):
@@ -139,3 +157,13 @@ class CBAM(nn.Module):
         out = self.channel_att(x)
         out = self.spatial_att(out)
         return out
+
+class Interpolate(nn.Module):
+    def __init__(self, size, mode='bilinear'):
+        super().__init__()
+        self.size = size
+        self.mode = mode
+
+    def forward(self, x):
+        return F.interpolate(x, size=self.size, mode=self.mode)
+        

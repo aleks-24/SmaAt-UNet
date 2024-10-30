@@ -6,6 +6,7 @@ import torch
 import pandas as pd
 import matplotlib.pyplot as plt
 from pykrige.ok import OrdinaryKriging
+from joblib import Parallel, delayed
 
 SIZE = 288
 
@@ -40,32 +41,23 @@ grid_y = np.linspace(min_lat, max_lat, SIZE)
 # print(points.shape)
 kriged_maps = []
 
+def krige_variable(var_name, var_data):
+    """Performs kriging for a single variable."""
+    OK = OrdinaryKriging(
+        points[:, 1], 
+        points[:, 0], 
+        var_data, 
+        coordinates_type="geographic", 
+        variogram_model="spherical",
+        pseudo_inv=True
+    )
+    z, _ = OK.execute("grid", grid_x, grid_y)
+    return z
+
 def makeKrigeMap(nodes):
     '''Create a Krige map from a set of nodes'''
-    maps = np.empty([8, SIZE, SIZE])
-    for var_num in range(8):
-        var_name = columns[var_num]
-        #print("NODES: " + str(nodes))
-        variable = nodes[:,var_num]
-        #print("VAR: " + str(variable))
-        #print(variable)
-        OK = OrdinaryKriging( #x equals longitude, y = latitude
-            points[:,1], 
-            points[:,0], 
-            variable, 
-            coordinates_type="geographic", 
-            variogram_model="spherical",
-            pseudo_inv=True)
-        z, _ = OK.execute('grid', grid_x, grid_y)
-        # plt.imshow(z)
-        # plt.colorbar()
-        # plt.gca().invert_yaxis()
-        # plt.savefig('data/interpolation/' + var_name + '.png')
-        # plt.close()
-        #plt.show()
-        maps[var_num] = z
-
-    return maps
+    maps = Parallel(n_jobs=-1)(delayed(krige_variable)(columns[var_num], nodes[:, var_num]) for var_num in range(8))
+    return np.array(maps)
 
 if __name__ == "__main__":
     nodes = data

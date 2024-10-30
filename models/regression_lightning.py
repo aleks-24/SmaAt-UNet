@@ -46,7 +46,7 @@ class node_base(pl.LightningModule):
         return nn.functional.mse_loss(y_pred, y_true, reduction="sum") / y_true.size(0)
 
     def training_step(self, batch, batch_idx):
-        x,w, y = batch
+        x,w,y,z = batch
         y_pred = self(x, w)
         loss = self.loss_func(y_pred.squeeze(), y)
         # logs metrics for each training_step,
@@ -55,14 +55,14 @@ class node_base(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x,w, y = batch
+        x,w,y,z = batch
         y_pred = self(x, w)
         loss = self.loss_func(y_pred.squeeze(), y)
         self.log("val_loss", loss, prog_bar=True)
 
     def test_step(self, batch, batch_idx):
         """Calculate the loss (MSE per default) on the test set normalized and denormalized."""
-        x, w, y = batch
+        x, w, y, z = batch
         y_pred = self(x, w)
         loss = self.loss_func(y_pred.squeeze(), y)
         factor = 47.83
@@ -242,7 +242,7 @@ class node_regression_base(node_base):
         # )
         train_transform = None
         valid_transform = None
-        precip_dataset = dataset_precip.precipitation_maps_node_h5
+        precip_dataset = dataset_hybrid.precipitation_maps_h5_nodes
         self.train_dataset = precip_dataset(
             in_file=self.hparams.dataset_folder,
             num_input_images=self.hparams.num_input_images,
@@ -275,7 +275,7 @@ class node_regression_base(node_base):
             sampler=self.train_sampler,
             pin_memory=True,
             # The following can/should be tweaked depending on the number of CPU cores
-            num_workers=1,
+            num_workers=10,
             persistent_workers=True,
         )
         return train_loader
@@ -287,7 +287,7 @@ class node_regression_base(node_base):
             sampler=self.valid_sampler,
             pin_memory=True,
             # The following can/should be tweaked depending on the number of CPU cores
-            num_workers=1,
+            num_workers=10,
             persistent_workers=True,
         )
         return valid_loader
@@ -301,7 +301,6 @@ class Kriging_regression_base(node_base):
         parser.add_argument("--num_output_images", type=int, default=6)
         parser.add_argument("--valid_size", type=float, default=0.1)
         parser.add_argument("--use_oversampled_dataset", type=bool, default=True)
-        parser.add_argument("--dataset_folder", type=str, default=ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5")
         parser.n_channels = parser.parse_args().num_input_images
         parser.n_classes = 1
         return parser
@@ -352,7 +351,7 @@ class Kriging_regression_base(node_base):
             sampler=self.train_sampler,
             pin_memory=True,
             # The following can/should be tweaked depending on the number of CPU cores
-            num_workers=1,
+            num_workers=10,
             persistent_workers=True,
         )
         return train_loader
@@ -364,7 +363,7 @@ class Kriging_regression_base(node_base):
             sampler=self.valid_sampler,
             pin_memory=True,
             # The following can/should be tweaked depending on the number of CPU cores
-            num_workers=1,
+            num_workers=10,
             persistent_workers=True,
         )
         return valid_loader

@@ -4,7 +4,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.layers import DepthwiseSeparableConv
+from models.layers import DepthwiseSeparableConv, DepthwiseSeparableConv3D
 
 
 class DoubleConvDS(nn.Module):
@@ -85,6 +85,33 @@ class UpDS(nn.Module):
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
+class NodeInput3d(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.ds3d1 = DepthwiseSeparableConv3D(in_channels = 1, out_channels = 256, kernel_size = 3, padding=1, stride=(1, 1, 2))
+        self.ds3d2 = DepthwiseSeparableConv3D(in_channels = 256, out_channels = 512, kernel_size = 3, padding=1, stride=(1, 1, 1))
+        self.norm1 = nn.BatchNorm3d(256)
+        self.norm2 = nn.BatchNorm3d(512)
+        self.ReLU = nn.ReLU(inplace=True)
+        self.pool = nn.MaxPool3d(kernel_size=(1, 2, 2), stride=(1, 2, 2))
+        self.pool2 = nn.MaxPool2d(kernel_size=(3, 2), stride=(3, 1))
+    
+    def forward(self, x):
+        x = x.unsqueeze(1)
+        x1 = self.ds3d1(x)
+        x2 = self.norm1(x1)
+        x3 = self.ReLU(x2)
+        
+        x3 = self.pool(x3)
+        
+        x4 = self.ds3d2(x3)
+        x5 = self.norm2(x4)
+        x6 = self.ReLU(x5)
+        
+        x7 = self.pool(x6)
+        x8 = x7.squeeze(-1)
+        x9 = self.pool2(x8)
+        return x9
 
 class OutConv(nn.Module):
     def __init__(self, in_channels, out_channels):

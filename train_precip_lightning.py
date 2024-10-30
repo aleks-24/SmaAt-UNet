@@ -1,5 +1,3 @@
-from root import ROOT_DIR
-
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import (
     ModelCheckpoint,
@@ -10,6 +8,8 @@ from lightning.pytorch import loggers
 import argparse
 from models import unet_precip_regression_lightning as unet_regr
 from lightning.pytorch.tuner import Tuner
+
+from root import ROOT_DIR
 
 
 def train_regression(hparams, find_batch_size_automatically: bool = False):
@@ -23,8 +23,10 @@ def train_regression(hparams, find_batch_size_automatically: bool = False):
         net = unet_regr.UNetDS(hparams=hparams)
     elif hparams.model == "SmaAt_UNet":
         net = unet_regr.SmaAt_UNet(hparams=hparams)
-    elif hparams.model == "Hybrid_UNet":
-        net = unet_regr.Hybrid_SmaAt(hparams = hparams)
+    elif hparams.model == "Node_SmaAt_bridge":
+        net = unet_regr.Node_SmaAt_bridge(hparams = hparams)
+    elif hparams.model == "Krige_GNet":
+        net = unet_regr.Krige_GNet(hparams = hparams)
     elif hparams.model == "Hybrid_UNet_2":
         net = unet_regr.Hybrid_SmaAt_2(hparams = hparams)
     else:
@@ -75,11 +77,11 @@ def train_regression(hparams, find_batch_size_automatically: bool = False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser = unet_regr.Precip_regression_base.add_model_specific_args(parser)
+    parser = unet_regr.Kriging_regression_base.add_model_specific_args(parser)
 
     parser.add_argument(
         "--dataset_folder",
-        default=ROOT_DIR / "data" / "precipitation" / "RAD_NL25_RAC_5min_train_test_2016-2019.h5",
+        default= ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64.h5",
         type=str,
     )
     parser.add_argument("--batch_size", type=int, default=16)
@@ -95,7 +97,7 @@ if __name__ == "__main__":
     args.n_channels = 12
     # args.gpus = 1
     #args.model = "Hybrid_UNet"
-    args.model = "Hybrid_UNet_2"
+    args.model = "Krige_GNet"
     #args.model = "SmaAt_UNet"
     args.lr_patience = 4
     args.es_patience = 15
@@ -104,7 +106,7 @@ if __name__ == "__main__":
     args.use_oversampled_dataset = True
     args.dropout=0.5
     args.dataset_folder = (
-        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64.h5"
     )
     # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"
 
