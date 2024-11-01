@@ -10,7 +10,7 @@ from utils.interpolation_maps import makeKrigeMap
 
 precipitation_folder = ROOT_DIR / "data" / "precipitation"
 #create kriging dataset from regular node dataset
-K_SIZE = 288 #size of kriging map
+K_SIZE = 77 #size of kriging map
 
 def create_dataset():
     with h5py.File(
@@ -66,6 +66,5 @@ def create_dataset():
                 compression="gzip",
                 compression_opts=5,
             )
-
 
 create_dataset()

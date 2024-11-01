@@ -14,3 +14,5 @@ gaps2.csv
 training_nodes.csv
 utils/__pycache__/__init__.cpython-312.pyc
 utils/__pycache__/interpolation_maps.cpython-312.pyc
+utils/__pycache__/__init__.cpython-310.pyc
+utils/__pycache__/interpolation_maps.cpython-310.pyc

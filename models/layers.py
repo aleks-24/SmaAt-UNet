@@ -67,7 +67,6 @@ class DepthwiseSeparableConv3D(nn.Module):
         out = self.pointwise(out)
         return out
 
-
 class DoubleDense(nn.Module):
     def __init__(self, in_channels, hidden_neurons, output_channels):
         super().__init__()
