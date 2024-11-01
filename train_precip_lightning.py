@@ -77,14 +77,15 @@ def train_regression(hparams, find_batch_size_automatically: bool = False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser = unet_regr.Kriging_regression_base.add_model_specific_args(parser)
-
+    #parser = unet_regr.Kriging_regression_base.add_model_specific_args(parser)
+    parser = unet_regr.Precip_regression_base.add_model_specific_args(parser)
+    
     parser.add_argument(
         "--dataset_folder",
-        default= ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64.h5",
+        default= ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64_64.h5",
         type=str,
     )
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--learning_rate", type=float, default=0.001)
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--fast_dev_run", type=bool, default=False)
@@ -97,8 +98,8 @@ if __name__ == "__main__":
     args.n_channels = 12
     # args.gpus = 1
     #args.model = "Hybrid_UNet"
-    args.model = "Krige_GNet"
-    #args.model = "SmaAt_UNet"
+    #args.model = "Krige_GNet"
+    args.model = "SmaAt_UNet"
     args.lr_patience = 4
     args.es_patience = 15
     # args.val_check_interval = 0.25
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     args.use_oversampled_dataset = True
     args.dropout=0.5
     args.dataset_folder = (
-        ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64_64.h5"
     )
     # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"
 

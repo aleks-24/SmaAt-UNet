@@ -199,7 +199,7 @@ class Precip_regression_base(UNet_base):
             sampler=self.train_sampler,
             pin_memory=True,
             # The following can/should be tweaked depending on the number of CPU cores
-            num_workers=1,
+            num_workers=10,
             persistent_workers=True,
         )
         return train_loader
@@ -211,7 +211,7 @@ class Precip_regression_base(UNet_base):
             sampler=self.valid_sampler,
             pin_memory=True,
             # The following can/should be tweaked depending on the number of CPU cores
-            num_workers=1,
+            num_workers=10,
             persistent_workers=True,
         )
         return valid_loader

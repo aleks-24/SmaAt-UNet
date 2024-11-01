@@ -240,7 +240,6 @@ class SmaAt_UNet(Precip_regression_base):
         self.dropout = nn.Dropout(p=dropout_prob)
 
     def forward(self, x):
-        print(x.shape)
         x1 = self.inc(x)
         x1Att = self.cbam1(x1)
         x2 = self.down1(x1)
