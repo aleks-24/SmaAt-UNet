@@ -103,7 +103,7 @@ def get_model_losses(model_folder, data_file, loss, denormalize):
 
     models = [m for m in os.listdir(model_folder) if ".ckpt" in m]
     # dataset = dataset_precip.precipitation_maps_masked_h5(
-    dataset = dataset_hybrid.precipitation_maps_h5_kriging(
+    dataset = dataset_hybrid.precipitation_maps_h5_nodes(
         in_file=data_file,
         num_input_images=12,
         num_output_images=6, 
@@ -121,7 +121,8 @@ def get_model_losses(model_folder, data_file, loss, denormalize):
     for model_file in models:
         print(model_folder)
         print(model_file)
-        model, model_name = unet_regr.Krige_GNet, "Krige_GNet"
+        #model, model_name = unet_regr.Krige_GNet, "Krige_GNet"
+        model, model_name = unet_regr.Node_SmaAt_bridge, "Node_SmaAt_bridge"
         model = model.load_from_checkpoint(f"{model_folder}/{model_file}")
 
         name = model_name
@@ -160,12 +161,16 @@ if __name__ == '__main__':
     denormalize = True
     # Models that are compared should be in this folder (the ones with the lowest validation error)
     model_folder = ROOT_DIR / "comparison"
+    #data_file = (
+    #    ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64_64.h5"
+    #)
+    #results_folder = ROOT_DIR / "results" / "Krige_GNet"
     data_file = (
-        ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64_64.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_35.h5"
     )
-    results_folder = ROOT_DIR / "results" / "Krige_GNet"
+    results_folder = ROOT_DIR / "results" / "Node_Bridge"
 
     test_losses = dict()
     test_losses = get_model_losses(model_folder, data_file, loss, denormalize)
-    print(losses_to_csv(test_losses['binary_50'], (results_folder / "res_50.csv")))
+    print(losses_to_csv(test_losses['binary_35'], (results_folder / "res_35.csv")))
 

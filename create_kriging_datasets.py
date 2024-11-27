@@ -10,11 +10,11 @@ from utils.interpolation_maps import makeKrigeMap
 
 precipitation_folder = ROOT_DIR / "data" / "precipitation"
 #create kriging dataset from regular node dataset
-K_SIZE = 77 #size of kriging map
+K_SIZE = 64 #size of kriging map
 
 def create_dataset():
     with h5py.File(
-        precipitation_folder / "hybrid_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50.h5",
+        precipitation_folder / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_35.h5",
         "r",
     ) as orig_f:
         train_images = orig_f["train"]["images"]
@@ -25,7 +25,7 @@ def create_dataset():
         test_nodes = orig_f["test"]["nodes"]
 
         filename = (
-            precipitation_folder / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_288.h5"
+            precipitation_folder / "hybrid_kriging_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_35_size_64.h5"
         )
         #copy images and timestamps, create kriging dataset
         with h5py.File(filename, "w") as f:
@@ -36,8 +36,8 @@ def create_dataset():
             orig_f["test"].copy("images", test_set)
             orig_f["test"].copy("timestamps", test_set)
 
-            kriging_train_images = np.empty((5733,18,8,K_SIZE,K_SIZE), dtype="float32")
-            kriging_test_images = np.empty((1557,18,8,K_SIZE,K_SIZE), dtype="float32")
+            kriging_train_images = np.empty((train_set["images"].shape[0],18,8,K_SIZE,K_SIZE), dtype="float32")
+            kriging_test_images = np.empty((test_set["images"].shape[0],18,8,K_SIZE,K_SIZE), dtype="float32")
 
             for i in tqdm(range(kriging_train_images.shape[0])):
                 for j in range(kriging_train_images.shape[2]):

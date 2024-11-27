@@ -10,9 +10,9 @@ import torch
 def beep():
     """Create a dataset that has target images containing at least `rain_amount_thresh` (percent) of rain."""
 
-    type = 'train'
+    data_type = 'test'
 
-    precipitation_folder = ROOT_DIR / "data" / "precipitation"
+    precipitation_folder = ROOT_DIR
     nodes_folder = Path(ROOT_DIR / "data" / "Set6")
     nodes = [f for f in nodes_folder.iterdir() if f.is_dir()]
     node_train = None
@@ -21,10 +21,10 @@ def beep():
         df['DTG'] = pd.to_datetime(df['DTG'])
         #make node_train have years
         nt = df['DTG']
-        if type == 'test':
-            node_train = nt[nt.dt.year == 2019]
+        if data_type == 'test':
+            node_train = nt[(nt.dt.year < 2024) & (nt.dt.year >= 2022)]
         else:
-            node_train = nt[(nt.dt.year < 2019) & (nt.dt.year >= 2016)]
+            node_train = nt[(nt.dt.year < 2022) & (nt.dt.year >= 2013)]
     result = result = pd.concat([node_train.copy(),node_train.copy()])
 
     for i, node in enumerate(node_train):
@@ -35,26 +35,34 @@ def beep():
     nodes_length = len(result)
     train_timestamps_len = None
     set_a = set(result)
+    #print(set_a)
     set_b = set()
     nan_values = None
     with h5py.File(
-        precipitation_folder / "RAD_NL25_RAC_5min_train_test_2016-2019.h5",
+        precipitation_folder / "RAD_NL21_PRECIP.h5",
         "r",
     ) as orig_f:
-        train_timestamps = orig_f[type]["timestamps"]
+        train_timestamps = orig_f[data_type]["timestamps"]
         train_timestamps_len = len(train_timestamps)
+        train_timestamps = pd.DataFrame(train_timestamps)
+        print(train_timestamps)
         timestamps = train_timestamps.apply(lambda x: x[0].decode('utf-8').replace(';', ' '), axis=1)
-        timestamps = pd.to_datetime(timestamps, errors='coerce')
-        nan_values = timestamps.isna()
+        print(timestamps)
+        timestamps = pd.to_datetime(timestamps)
+        print(timestamps)
+        #timestamps = train_timestamps
         set_b = set(timestamps)
         
 
-
-    df = set_a - set_b
+    print(sorted(set_a)[0])
+    print(sorted(set_b)[0])
+    diff = set_b ^ set_a
+    output = pd.DataFrame(sorted(diff), columns=['DTG'])
+    #print(output)
     #print nodes_length and train_timestamps length
     print(nodes_length)
     print(train_timestamps_len)
-    pd.DataFrame(df).to_csv(type + '_gaps.csv')
+    output.to_csv("bad_index2_" + data_type + '.csv')
     #print(df)
 
 if __name__ == "__main__":

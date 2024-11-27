@@ -27,6 +27,9 @@ class node_base(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.save_hyperparameters(hparams)
+        # #Add mask to ignore values with no information
+        # mask = torch.from_numpy(np.load("mask.npy").astype(np.uint8))
+        # self.register_buffer("mask", mask.unsqueeze(0))
 
     def forward(self, x):
         pass
@@ -42,6 +45,11 @@ class node_base(pl.LightningModule):
         return [opt], [scheduler]
 
     def loss_func(self, y_pred, y_true):
+        # #apply mask first
+        # mask = self.mask.expand_as(y_pred)
+        # y_pred = y_pred[self.mask == 1]
+        # y_true = y_true[self.mask == 1]
+        
         # reduction="mean" is average of every pixel, but I want average of image
         return nn.functional.mse_loss(y_pred, y_true, reduction="sum") / y_true.size(0)
 
@@ -65,7 +73,7 @@ class node_base(pl.LightningModule):
         x, w, y, z = batch
         y_pred = self(x, w)
         loss = self.loss_func(y_pred.squeeze(), y)
-        factor = 47.83
+        factor = 80.42
         loss_denorm = self.loss_func(y_pred.squeeze() * factor, y * factor)
         self.log("MSE", loss)
         self.log("MSE_denormalized", loss_denorm)
@@ -130,7 +138,7 @@ class UNet_base(pl.LightningModule):
         x, y = batch
         y_pred = self(x)
         loss = self.loss_func(y_pred.squeeze(), y)
-        factor = 47.83
+        factor = 80.42
         loss_denorm = self.loss_func(y_pred.squeeze() * factor, y * factor)
         self.log("MSE", loss)
         self.log("MSE_denormalized", loss_denorm)

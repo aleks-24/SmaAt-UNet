@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from pykrige.ok import OrdinaryKriging
 from joblib import Parallel, delayed
 
-SIZE = 288
+SIZE = 64
 
 #get first row of data from each weather station
 dataset_path = "data/Set6"
@@ -30,8 +30,8 @@ for i,node in enumerate(nodes):
 #normalize points to be between 0 and 1 for x and y separately
 columns = list(df.columns.values)
 
-min_long, max_long = 3.1688, 7.4312 #min and max long and lat of Netherlands precipitation maps
-min_lat, max_lat = 50.82512, 53.4748
+min_long, max_long = 3.4, 7.9 #min and max long and lat of Netherlands precipitation maps
+min_lat, max_lat = 51.2, 53.5
 #swap lat and long
 #points = points[:,[1,0]]
 

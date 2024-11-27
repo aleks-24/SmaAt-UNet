@@ -157,6 +157,39 @@ class CBAM(nn.Module):
         out = self.spatial_att(out)
         return out
 
+class CBAM3D(nn.Module):
+    def __init__(self, channels, reduction_ratio=16, kernel_size=7):
+        super(CBAM3D, self).__init__()
+        # Channel Attention Module
+        self.channel_avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.channel_max_pool = nn.AdaptiveMaxPool3d(1)
+        self.shared_MLP = nn.Sequential(
+            nn.Conv3d(channels, channels // reduction_ratio, 1, bias=False),
+            nn.ReLU(),
+            nn.Conv3d(channels // reduction_ratio, channels, 1, bias=False)
+        )
+        self.sigmoid_channel = nn.Sigmoid()
+        
+        # Spatial Attention Module
+        self.conv_spatial = nn.Conv3d(2, 1, kernel_size, padding=kernel_size // 2, bias=False)
+        self.sigmoid_spatial = nn.Sigmoid()
+
+    def forward(self, x):
+        # Channel Attention
+        avg_out = self.shared_MLP(self.channel_avg_pool(x))
+        max_out = self.shared_MLP(self.channel_max_pool(x))
+        channel_out = self.sigmoid_channel(avg_out + max_out)
+        x = x * channel_out
+
+        # Spatial Attention
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        spatial_out = torch.cat([avg_out, max_out], dim=1)
+        spatial_out = self.sigmoid_spatial(self.conv_spatial(spatial_out))
+        x = x * spatial_out
+
+        return x
+
 class Interpolate(nn.Module):
     def __init__(self, size, mode='bilinear'):
         super().__init__()

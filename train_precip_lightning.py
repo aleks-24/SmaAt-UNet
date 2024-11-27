@@ -4,15 +4,19 @@ from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     EarlyStopping,
 )
+import torch
 from lightning.pytorch import loggers
+from pytorch_lightning.profilers import SimpleProfiler
 import argparse
 from models import unet_precip_regression_lightning as unet_regr
 from lightning.pytorch.tuner import Tuner
-
+from pathlib import Path
 from root import ROOT_DIR
 
+torch.set_float32_matmul_precision('medium')
 
 def train_regression(hparams, find_batch_size_automatically: bool = False):
+
     if hparams.model == "UNetDS_Attention":
         net = unet_regr.UNetDS_Attention(hparams=hparams)
     elif hparams.model == "UNet_Attention":
@@ -32,27 +36,31 @@ def train_regression(hparams, find_batch_size_automatically: bool = False):
     else:
         raise NotImplementedError(f"Model '{hparams.model}' not implemented")
 
-    default_save_path = ROOT_DIR / "lightning" / "precip_regression"
-
+    default_save_path = ROOT_DIR / "lightning_results"
+    tb_logger = loggers.TensorBoardLogger(save_dir=default_save_path, name=net.__class__.__name__)
+    
     checkpoint_callback = ModelCheckpoint(
-        dirpath=default_save_path / net.__class__.__name__,
-        filename=net.__class__.__name__ + "_rain_threshold_50_{epoch}-{val_loss:.6f}",
+        dirpath= Path(tb_logger.log_dir),
+        filename=net.__class__.__name__ + "_rain_threshold_15_{epoch}-{val_loss:.6f}",
         save_top_k=-1,
         verbose=False,
         monitor="val_loss",
         mode="min",
     )
+    
     lr_monitor = LearningRateMonitor()
-    tb_logger = loggers.TensorBoardLogger(save_dir=default_save_path, name=net.__class__.__name__)
-
     earlystopping_callback = EarlyStopping(
         monitor="val_loss",
         mode="min",
         patience=hparams.es_patience,
     )
+
+    profiler = SimpleProfiler()
+    
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=1,
+        profiler=profiler,
         fast_dev_run=hparams.fast_dev_run,
         max_epochs=hparams.epochs,
         default_root_dir=default_save_path,
@@ -82,12 +90,12 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--dataset_folder",
-        default= ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64_64.h5",
+        default= ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_15.h5",
         type=str,
     )
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--learning_rate", type=float, default=0.001)
-    parser.add_argument("--epochs", type=int, default=200)
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--fast_dev_run", type=bool, default=False)
     parser.add_argument("--resume_from_checkpoint", type=str, default=None)
     parser.add_argument("--val_check_interval", type=float, default=None)
@@ -100,14 +108,14 @@ if __name__ == "__main__":
     #args.model = "Hybrid_UNet"
     #args.model = "Krige_GNet"
     args.model = "SmaAt_UNet"
-    args.lr_patience = 4
-    args.es_patience = 15
+    args.lr_patience = 2
+    args.es_patience = 5
     # args.val_check_interval = 0.25
     args.kernels_per_layer = 2
     args.use_oversampled_dataset = True
     args.dropout=0.5
     args.dataset_folder = (
-        ROOT_DIR / "data" / "precipitation" / "hybrid_kriging_train_test_2016-2019_input-length_12_img-ahead_6_rain-threshold_50_size_64_64.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_15.h5"
     )
     # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"
 

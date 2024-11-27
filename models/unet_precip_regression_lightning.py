@@ -395,13 +395,11 @@ class Node_SmaAt_bridge(node_regression_base): #version with embedded tensor add
         self.up3 = UpDS(256, 128 // factor, self.bilinear, kernels_per_layer=kernels_per_layer)
         self.up4 = UpDS(128, 64, self.bilinear, kernels_per_layer=kernels_per_layer)
         
-        self.ip = Interpolate(size=(64,64), mode='bilinear') #interpolate data to image size
         self.outc = OutConv(64, self.n_classes)
 
         self.dropout = nn.Dropout(p=dropout_prob)
 
     def forward(self, x , y):
-        x = self.ip(x)
         x1 = self.inc(x)
         x1Att = self.cbam1(x1)
         x2 = self.down1(x1)
@@ -412,15 +410,15 @@ class Node_SmaAt_bridge(node_regression_base): #version with embedded tensor add
         x4Att = self.cbam4(x4)
         x5 = self.down4(x4)
         x5Att = self.cbam5(x5)
-
-        #bridge part
-        #print(y.shape)
-        y1 = self.inc2(y)
-        #print(y1.shape)
         #print(x5Att.shape)
-        x = torch.cat((x5Att, y1), dim= 3) #attach the 8x18 node data to the 18x18 embedded tensor becoming a 26x18 tensor
+        #bridge part
+        y1 = self.inc2(y)
+        print(y1.shape)
+        x = torch.cat((x5Att, y1), dim= 3) #attach the 4x4 node data to the 4x4 embedded tensor becoming a 4x8 tensor
+        print(x.shape)
         
         x = self.up1(x, x4Att)
+        #print(x.shape)
         x = self.dropout(x)
         x = self.up2(x, x3Att)
         x = self.dropout(x)
