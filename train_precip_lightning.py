@@ -41,7 +41,7 @@ def train_regression(hparams, find_batch_size_automatically: bool = False):
     
     checkpoint_callback = ModelCheckpoint(
         dirpath= Path(tb_logger.log_dir),
-        filename=net.__class__.__name__ + "_rain_threshold_15_{epoch}-{val_loss:.6f}",
+        filename=net.__class__.__name__ + "_rain_threshold_35_{epoch}-{val_loss:.6f}",
         save_top_k=-1,
         verbose=False,
         monitor="val_loss",
@@ -90,12 +90,12 @@ if __name__ == "__main__":
     
     parser.add_argument(
         "--dataset_folder",
-        default= ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_15.h5",
+        default= ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_35.h5",
         type=str,
     )
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--learning_rate", type=float, default=0.001)
-    parser.add_argument("--epochs", type=int, default=20)
+    parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--fast_dev_run", type=bool, default=False)
     parser.add_argument("--resume_from_checkpoint", type=str, default=None)
     parser.add_argument("--val_check_interval", type=float, default=None)
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     args.use_oversampled_dataset = True
     args.dropout=0.5
     args.dataset_folder = (
-        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_15.h5"
+        ROOT_DIR / "data" / "precipitation" / "hybrid_train_test_2014-2023_input-length_12_img-ahead_6_rain-threshold_35.h5"
     )
     # args.resume_from_checkpoint = f"lightning/precip_regression/{args.model}/UNetDS_Attention.ckpt"
 

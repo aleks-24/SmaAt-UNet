@@ -13,12 +13,18 @@ def get_model_class(model_file) -> tuple[type[pl.LightningModule], str]:
     elif "Node_SmaAt_bridge" in model_file:
         model_name = "Node_SmaAt_bridge"
         model = unet_regr.Node_SmaAt_bridge
-    elif "Node_SmaAt" in model_file:
-        model_name = "Node_SmaAt"
-        model = unet_regr.Node_SmaAt
+    elif "Bridge" in model_file:
+        model_name = "Node_SmaAt_bridge"
+        model = unet_regr.Node_SmaAt_bridge        
+    elif "Smaat" in model_file:
+        model_name = "SmaAt_UNet"
+        model = unet_regr.SmaAt_UNet
     elif "Krige_GNet" in model_file:
         model_name = "Krige_GNet"
-        model = unet_regr.Node_GNet
+        model = unet_regr.Krige_GNet
+    elif "Krige" in model_file:
+        model_name = "Krige_GNet"
+        model = unet_regr.Krige_GNet
     elif "UNetDS_Attention_4kpl" in model_file:
         model_name = "UNetDS Attention with 4kpl"
         model = unet_regr.UNetDS_Attention

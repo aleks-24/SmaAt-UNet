@@ -104,7 +104,7 @@ class NodeInput3d(nn.Module):
         x4 = self.ds3d2(x3)
         x5 = self.norm2(x4)
         x6 = self.ReLU(x5)
-        print(x6.shape)
+        #print(x6.shape)
         
         x7 = self.pool(x6)
         x8 = x7.squeeze(-1)

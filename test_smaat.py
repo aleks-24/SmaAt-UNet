@@ -8,12 +8,12 @@ import pickle
 from tqdm import tqdm
 import math
 from pathlib import Path
-
+from collections import defaultdict
 from root import ROOT_DIR
 from utils import data_loader_precip, dataset_precip, data_loader_precip, dataset_hybrid
 from models import unet_precip_regression_lightning as unet_regr
 
-def get_binary_metrics(model, test_dl, loss="mse", denormalize=True, threshold=0.5, mask_empty = True):
+def get_binary_metrics(model, test_dl, loss="mse", denormalize=True, thresholds = [0.5], mask_empty = True):
     with torch.no_grad():
       cuda = torch.device("cuda")
       model.eval()  # or model.freeze()?
@@ -27,11 +27,14 @@ def get_binary_metrics(model, test_dl, loss="mse", denormalize=True, threshold=0
       if denormalize:
           factor = 80.54
 
-      threshold = threshold
       epsilon = 1e-6
-
-      total_tp, total_fp, total_tn, total_fn = 0, 0, 0, 0 
-
+      counts = defaultdict(lambda: defaultdict(int))
+      for threshold in thresholds:
+          counts[str(threshold)]['total_tp'] = 0
+          counts[str(threshold)]['total_fp'] = 0
+          counts[str(threshold)]['total_tn'] = 0
+          counts[str(threshold)]['total_fn'] = 0
+          
       loss_denorm = 0.0
 
       count = 0
@@ -58,58 +61,87 @@ def get_binary_metrics(model, test_dl, loss="mse", denormalize=True, threshold=0
           y_true_adj *= 12.0
           
           # convert to masks for comparison
-          y_pred_mask = y_pred_adj > threshold
-          y_true_mask = y_true_adj > threshold
-
-          # also add extra mask to remove blank pixels
-          if mask_empty:
-              map_mask = np.load("mask.npy")
-              map_mask = map_mask.astype(np.uint8)
-              map_mask = torch.from_numpy(map_mask).to('cuda').squeeze()
-              map_mask = map_mask.unsqueeze(0).repeat(y_pred_mask.shape[0], 1, 1) #repeat for batch size
-              y_pred_mask = y_pred_mask[map_mask==1]
-              y_true_mask = y_true_mask[map_mask==1]
           
-          y_pred_mask = y_pred_mask.cpu()
-          y_true_mask = y_true_mask.cpu()
-          tn, fp, fn, tp = np.bincount(y_true_mask.view(-1) * 2 + y_pred_mask.view(-1), minlength=4)
-          total_tp += tp
-          total_fp += fp
-          total_tn += tn
-          total_fn += fn
+          for threshold in thresholds:
+                  
+              y_pred_mask = y_pred_adj > threshold
+              y_true_mask = y_true_adj > threshold
+        
+              # also add extra mask to remove blank pixels
+              if mask_empty:
+                  map_mask = np.load("mask.npy")
+                  map_mask = map_mask.astype(np.uint8)
+                  map_mask = torch.from_numpy(map_mask).to('cuda').squeeze()
+                  map_mask = map_mask.unsqueeze(0).repeat(y_pred_mask.shape[0], 1, 1) #repeat for batch size
+                  y_pred_mask = y_pred_mask[map_mask==1]
+                  y_true_mask = y_true_mask[map_mask==1]
+              
+              y_pred_mask = y_pred_mask.cpu()
+              y_true_mask = y_true_mask.cpu()
+              tn, fp, fn, tp = np.bincount(y_true_mask.view(-1) * 2 + y_pred_mask.view(-1), minlength=4)
+              counts[str(threshold)]['total_tp'] += tp
+              counts[str(threshold)]['total_fp'] += fp
+              counts[str(threshold)]['total_tn'] += tn
+              counts[str(threshold)]['total_fn'] += fn
 
       mse_image = loss_denorm / len(test_dl)
       mse_pixel = mse_image / torch.numel(y_true)
 
-      print(f"TP: {total_tp}")
-      print(f"FP: {total_fp}")
-      print(f"TN: {total_tn}")
-      print(f"FN: {total_fn}")
-      # get metrics
-      precision = total_tp / (total_tp + total_fp + epsilon)
-      recall = total_tp / (total_tp + total_fn + epsilon)
-      accuracy = (total_tp + total_tn) / (total_tp + total_tn + total_fp + total_fn + epsilon)
-      f1 = 2 * precision * recall / (precision + recall + epsilon)
-      csi = total_tp / (total_tp + total_fn + total_fp + epsilon)
-      far = total_fp / (total_tp + total_fp + epsilon)
-      pod = total_tp / (total_tp + total_fn + epsilon)
-      hss = (total_tp * total_tn - total_fn * total_fp) / ((total_tp + total_fn) * (total_fn + total_tn) + (total_tp + total_fp) * (total_fp + total_tn) + epsilon)
-    return mse_pixel.item(), mse_image.item(), precision, recall, accuracy, f1, csi, far, pod, hss
+      results = defaultdict(lambda: defaultdict(float))
+      for threshold in thresholds:
+          total_tp = counts[str(threshold)]['total_tp']
+          total_fp = counts[str(threshold)]['total_fp']
+          total_tn = counts[str(threshold)]['total_tn']
+          total_fn = counts[str(threshold)]['total_fn']
+          
+          print(f"TP: {total_tp}")
+          print(f"FP: {total_fp}")
+          print(f"TN: {total_tn}")
+          print(f"FN: {total_fn}")
+          
+          # get metrics
+          results[str(threshold)]['precision'] = total_tp / (total_tp + total_fp + epsilon)
+          results[str(threshold)]['recall'] = total_tp / (total_tp + total_fn + epsilon)
+          results[str(threshold)]['accuracy'] = (total_tp + total_tn) / (total_tp + total_tn + total_fp + total_fn + epsilon)
+          p = results[str(threshold)]['precision']
+          r = results[str(threshold)]['recall']
+          results[str(threshold)]['f1'] = 2 * p * r / (p + r + epsilon)
+          results[str(threshold)]['csi'] = total_tp / (total_tp + total_fn + total_fp + epsilon)
+          results[str(threshold)]['far'] = total_fp / (total_tp + total_fp + epsilon)
+          results[str(threshold)]['hss'] = (total_tp * total_tn - total_fn * total_fp) / ((total_tp + total_fn) * (total_fn + total_tn) + (total_tp + total_fp) * (total_fp + total_tn) + epsilon)
+          
+    return mse_pixel.item(), mse_image.item(), results
 
-def print_binary_metrics(model, data_file, threshold=0.5):
+def print_binary_metrics(model, data_file, thresholds):
     test_dl = data_file
-    mse_pixel, mse_image, precision, recall, accuracy, f1, csi, far, pod, hss = get_binary_metrics(model, test_dl, loss="mse",
-                                                                                    denormalize=True, threshold=threshold, mask_empty = False)
-    mse_pixel_mask, mse_image_mask, precision_mask, recall_mask, accuracy_mask, f1_mask, csi_mask, far_mask, pod_mask, hss_mask = get_binary_metrics(model, test_dl, loss="mse",
-                                                                                    denormalize=True, threshold=threshold, mask_empty = True)
+    mse_pixel, mse_image, results = get_binary_metrics(model, test_dl, loss="mse",
+                                                                                    denormalize=True, thresholds=thresholds, mask_empty = False)
+    mse_pixel_mask, mse_image_mask, mask_results = get_binary_metrics(model, test_dl, loss="mse",
+                                                                                    denormalize=True, thresholds=thresholds, mask_empty = True)
+    for threshold in thresholds:
+        precision = results[str(threshold)]['precision']
+        recall = results[str(threshold)]['recall']
+        accuracy = results[str(threshold)]['accuracy']
+        f1 = results[str(threshold)]['f1']
+        csi = results[str(threshold)]['csi']
+        far = results[str(threshold)]['far']
+        hss = results[str(threshold)]['hss']
+
+        precision_mask = mask_results[str(threshold)]['precision']
+        recall_mask = mask_results[str(threshold)]['recall']
+        accuracy_mask = mask_results[str(threshold)]['accuracy']
+        f1_mask = mask_results[str(threshold)]['f1']
+        csi_mask = mask_results[str(threshold)]['csi']
+        far_mask = mask_results[str(threshold)]['far']
+        hss_mask = mask_results[str(threshold)]['hss']
+        
+        print(
+            f"MSE (pixel): {mse_pixel}, MSE (image): {mse_image}, precision: {precision}, recall: {recall}, accuracy: {accuracy}, f1: {f1}, csi: {csi}, far: {far}, hss: {hss}")
+        print("Masked values")
+        print(
+            f"MSE (pixel): {mse_pixel_mask}, MSE (image): {mse_image_mask}, precision: {precision_mask}, recall: {recall_mask}, accuracy: {accuracy_mask}, f1: {f1_mask}, csi: {csi_mask}, far: {far_mask}, hss: {hss_mask}")
     
-    print(
-        f"MSE (pixel): {mse_pixel}, MSE (image): {mse_image}, precision: {precision}, recall: {recall}, accuracy: {accuracy}, f1: {f1}, csi: {csi}, far: {far}, pod: {pod}, hss: {hss}")
-    print("Masked values")
-    print(
-        f"MSE (pixel): {mse_pixel_mask}, MSE (image): {mse_image_mask}, precision: {precision_mask}, recall: {recall_mask}, accuracy: {accuracy_mask}, f1: {f1_mask}, csi: {csi_mask}, far: {far_mask}, pod: {pod_mask}, hss: {hss_mask}")
-    
-    return [False, mse_pixel, mse_image, precision, recall, accuracy, f1, csi, far, pod, hss], [True, mse_pixel_mask, mse_image_mask, precision_mask, recall_mask, accuracy_mask, f1_mask, csi_mask, far_mask, pod_mask, hss_mask]
+    return [mse_pixel, mse_image, results], [mse_pixel_mask, mse_image_mask, mask_results]
 
 
 def get_model_losses(model_folder, data_file, loss, denormalize):
@@ -152,18 +184,21 @@ def get_model_losses(model_folder, data_file, loss, denormalize):
             test_losses_masked[f"binary_{str(int(threshold*100))}"] = []
           is_first = False
 
-        for threshold in thresholds:
-          
-          binary_loss, binary_loss_masked = print_binary_metrics(model, test_dl, threshold=threshold)
-          row = list(binary_loss)
-          test_losses[f"binary_{str(int(threshold*100))}"].append([threshold, name] + list(binary_loss))
-          test_losses_masked[f"binary_{str(int(threshold*100))}"].append([threshold, name] + list(binary_loss_masked))
+        binary_loss, binary_loss_masked = print_binary_metrics(model, test_dl, thresholds=thresholds)
 
+        for threshold in thresholds:
+            metrics = list(binary_loss[-1][str(threshold)].values())
+            metrics_masked = list(binary_loss_masked[-1][str(threshold)].values())
         
-    return test_losses, test_losses_masked
+            test_losses[f"binary_{str(int(threshold*100))}"].append([threshold, name, False, binary_loss[:2]] + metrics)
+            test_losses_masked[f"binary_{str(int(threshold*100))}"].append([threshold, name, True, binary_loss[:2]] + metrics_masked)
+            print(losses_to_csv(test_losses, (results_folder / "res_35.csv")))
+            print(losses_to_csv(test_losses_masked, (results_folder / "res_35_masked.csv")))
+        
+    return
 
 def losses_to_csv(losses_dict, path):
-    csv = "threshold, name, masked, mse (pixel), mse (image), precision, recall, accuracy, f1, csi, far, pod, hss\n"
+    csv = "threshold, name, masked, mse (pixel), mse (image), precision, recall, accuracy, f1, csi, far, hss\n"
     for key, losses in losses_dict.items():
         for loss in losses:
             row = ",".join(str(l) for l in loss)
@@ -187,8 +222,7 @@ if __name__ == '__main__':
 
     test_losses = dict()
     test_losses_masked = dict()
-    test_losses, test_losses_masked = get_model_losses(model_folder, data_file, loss, denormalize)
-    print(losses_to_csv(test_losses, (results_folder / "res_35.csv")))
-    print(losses_to_csv(test_losses_masked, (results_folder / "res_35_masked.csv")))
+    get_model_losses(model_folder, data_file, loss, denormalize)
+
     
 
